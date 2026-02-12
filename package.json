@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.2.0",
+    "@codemirror/language-data": "^6.5.2",
     "@uiw/react-codemirror": "^4.21.21",
     "clsx": "^2.1.0",
     "lucide-react": "^0.330.0",

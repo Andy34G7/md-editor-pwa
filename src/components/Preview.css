@@ -1,0 +1,27 @@
+.preview-container {
+  padding: 2rem;
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--preview-font, sans-serif);
+}
+
+/* Base styles for markdown content to ensure it looks decent even without a full reset */
+.markdown-body img {
+  max-width: 100%;
+}
+
+.markdown-body pre {
+  background-color: #2b2b2b;
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.markdown-body blockquote {
+  border-left: 4px solid var(--accent-color);
+  margin-left: 0;
+  padding-left: 1rem;
+  color: var(--text-secondary);
+}
