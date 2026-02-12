@@ -39,6 +39,26 @@
 .file-name {
   font-weight: 500;
   font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  cursor: text;
+}
+
+.file-name-input {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  outline: none;
+  width: 200px;
+}
+
+.file-name-input:focus {
+  border-color: var(--primary-color);
 }
 
 .app-main {

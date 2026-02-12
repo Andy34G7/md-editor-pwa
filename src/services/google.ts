@@ -1,11 +1,18 @@
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || ''; // Optional but good for some calls
 const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
-const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 
 let tokenClient: any;
 let gapiInited = false;
 let gisInited = false;
+
+export interface DriveFile {
+    id: string;
+    name: string;
+    mimeType: string;
+    modifiedTime?: string;
+}
 
 export const loadGoogleScripts = (onGapiLoaded: () => void, onGisLoaded: () => void) => {
     const script1 = document.createElement('script');
@@ -62,13 +69,27 @@ export const handleSignOut = () => {
     }
 };
 
-export const listFiles = async () => {
+export const getUserProfile = async () => {
+    try {
+        const response = await gapi.client.request({
+            'path': 'https://www.googleapis.com/oauth2/v3/userinfo',
+            'method': 'GET'
+        });
+        return response.result;
+    } catch (err) {
+        console.error('Error fetching user profile', err);
+        return null;
+    }
+};
+
+export const listFiles = async (parentId: string = 'root') => {
     if (!gapiInited) return;
     try {
         const response = await gapi.client.drive.files.list({
-            'pageSize': 20,
+            'pageSize': 100,
             'fields': 'files(id, name, mimeType, modifiedTime)',
-            'q': "mimeType = 'text/markdown' or name contains '.md' and trashed = false",
+            'q': `'${parentId}' in parents and (mimeType = 'text/markdown' or name contains '.md' or mimeType = 'application/vnd.google-apps.folder') and trashed = false`,
+            'orderBy': 'folder, name'
         });
         return response.result.files;
     } catch (err) {
@@ -105,7 +126,7 @@ export const saveFile = async (fileId: string, content: string) => {
     }
 };
 
-export const createFile = async (name: string, content: string) => {
+export const createFile = async (name: string, content: string, parentId: string = 'root') => {
     const boundary = '-------314159265358979323846';
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
@@ -113,7 +134,8 @@ export const createFile = async (name: string, content: string) => {
     const contentType = 'text/markdown';
     const metadata = {
         'name': name,
-        'mimeType': contentType
+        'mimeType': contentType,
+        'parents': [parentId]
     };
 
     const multipartRequestBody =
@@ -138,6 +160,21 @@ export const createFile = async (name: string, content: string) => {
         return response.result;
     } catch (err) {
         console.error('Error creating file', err);
+        throw err;
+    }
+};
+
+export const renameFile = async (fileId: string, newName: string) => {
+    try {
+        const response = await gapi.client.drive.files.update({
+            fileId: fileId,
+            resource: {
+                name: newName
+            }
+        });
+        return response.result;
+    } catch (err) {
+        console.error('Error renaming file', err);
         throw err;
     }
 };

@@ -4,7 +4,8 @@ import { SplitPane } from './components/SplitPane';
 import { Editor } from './components/Editor';
 import { Preview } from './components/Preview';
 import { FilePicker } from './components/FilePicker';
-import { useGoogleDrive, DriveFile } from './hooks/useGoogleDrive';
+import { useGoogleDrive } from './hooks/useGoogleDrive';
+import { DriveFile } from './services/google';
 
 function App() {
     const {
@@ -17,10 +18,16 @@ function App() {
         getFile,
         saveFile,
         createFile,
-        refreshFiles
+        refreshFiles,
+        renameFile,
+        folderPath,
+        navigateToFolder,
+        navigateUp
     } = useGoogleDrive();
 
     const [markdown, setMarkdown] = useState<string>('# Welcome to MD Editor\n\nSign in with Google to edit your markdown files.');
+    // ... (skip lines)
+
     const [currentFile, setCurrentFile] = useState<DriveFile | null>(null);
     const [showFilePicker, setShowFilePicker] = useState(false);
     const [isDark, setIsDark] = useState<boolean>(true);
@@ -80,17 +87,36 @@ function App() {
         }
     };
 
-    const handleNewFile = () => {
-        setCurrentFile(null);
-        setMarkdown('# New Document\n\nRanked #1 editor in the world!');
-        setShowFilePicker(false);
-        setIsDirty(true); // Treat as dirty so save creates new
-    };
+
 
     const handleLogout = () => {
         logout();
         setCurrentFile(null);
         setMarkdown('# Welcome to MD Editor\n\nSign in with Google to edit your markdown files.');
+    };
+
+    const handleRename = async (newName: string) => {
+        if (!currentFile || !isSignedIn) return;
+        try {
+            await renameFile(currentFile.id, newName); // Use destructured renameFile
+            setCurrentFile({ ...currentFile, name: newName });
+            refreshFiles(); // Refresh list to show new name
+        } catch (err) {
+            console.error('Failed to rename', err);
+            alert('Failed to rename file');
+        }
+    };
+
+    const handleDownload = () => {
+        const blob = new Blob([markdown], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = currentFile ? currentFile.name : 'Untitled.md'; // Fallback logic
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -102,9 +128,11 @@ function App() {
                 onLogin={login}
                 onLogout={handleLogout}
                 user={currentUser}
-                fileName={currentFile ? currentFile.name : (isDirty ? 'Untitled*' : 'Welcome')}
+                fileName={currentFile ? currentFile.name : 'Untitled.md'}
                 currentFont={font}
                 onFontChange={setFont}
+                onRename={isSignedIn && currentFile ? (newName) => handleRename(newName) : undefined}
+                onDownload={handleDownload}
             >
                 <SplitPane
                     left={
@@ -126,9 +154,17 @@ function App() {
                 <FilePicker
                     files={files}
                     onSelect={handleFileSelect}
-                    onCancel={() => setShowFilePicker(false)}
-                    onNewFile={handleNewFile}
-                    isLoading={driveLoading}
+                    onCancel={() => currentFile && setShowFilePicker(false)}
+                    currentPath={folderPath}
+                    onNavigate={navigateToFolder}
+                    onNavigateUp={navigateUp}
+                    onCreate={async (name) => {
+                        const newFile = await createFile(name, '');
+                        refreshFiles();
+                        setCurrentFile(newFile as any);
+                        setShowFilePicker(false);
+                        setMarkdown('');
+                    }}
                 />
             )}
         </>

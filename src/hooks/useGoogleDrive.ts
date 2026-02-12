@@ -8,15 +8,13 @@ import {
     listFiles,
     getFileContent,
     saveFile,
-    createFile
+    createFile,
+    renameFile,
+    getUserProfile,
+    DriveFile  // Import Shared Type
 } from '../services/google';
 
-export interface DriveFile {
-    id: string;
-    name: string;
-    mimeType: string;
-    modifiedTime?: string;
-}
+// Remove local DriveFile interface definition
 
 export function useGoogleDrive() {
     const [isSignedIn, setIsSignedIn] = useState(false);
@@ -25,6 +23,8 @@ export function useGoogleDrive() {
     const [files, setFiles] = useState<DriveFile[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [currentFolderId, setCurrentFolderId] = useState<string>('root');
+    const [folderPath, setFolderPath] = useState<{ id: string, name: string }[]>([{ id: 'root', name: 'My Drive' }]);
 
     useEffect(() => {
         let gapiLoaded = false;
@@ -38,11 +38,19 @@ export function useGoogleDrive() {
         };
 
         const onGisLoad = () => {
-            initializeGisClient((tokenResponse) => {
+            initializeGisClient(async (tokenResponse) => {
                 if (tokenResponse && tokenResponse.access_token) {
                     setIsSignedIn(true);
-                    // Fetch user info or list files
-                    // For now just set signed in
+
+                    // Fetch user info
+                    const profile = await getUserProfile();
+                    if (profile) {
+                        setCurrentUser({
+                            name: profile.name,
+                            email: profile.email,
+                            avatar: profile.picture
+                        });
+                    }
                 }
             });
             gisLoaded = true;
@@ -61,25 +69,43 @@ export function useGoogleDrive() {
         setIsSignedIn(false);
         setCurrentUser(null);
         setFiles([]);
+        setCurrentFolderId('root');
+        setFolderPath([{ id: 'root', name: 'My Drive' }]);
     }, []);
 
-    const refreshFiles = useCallback(async () => {
+    const refreshFiles = useCallback(async (folderId: string = currentFolderId) => {
         if (!isSignedIn) return;
         setLoading(true);
         try {
-            const driveFiles = await listFiles();
+            const driveFiles = await listFiles(folderId);
             setFiles(driveFiles || []);
         } catch (err: any) {
             setError(err.message || 'Failed to list files');
         } finally {
             setLoading(false);
         }
-    }, [isSignedIn]);
+    }, [isSignedIn, currentFolderId]);
+
+    const navigateToFolder = useCallback((folderId: string, folderName: string) => {
+        setCurrentFolderId(folderId);
+        setFolderPath(prev => [...prev, { id: folderId, name: folderName }]);
+        refreshFiles(folderId);
+    }, [refreshFiles]);
+
+    const navigateUp = useCallback(() => {
+        if (folderPath.length <= 1) return;
+        const newPath = [...folderPath];
+        newPath.pop(); // Remove current
+        const parent = newPath[newPath.length - 1];
+        setFolderPath(newPath);
+        setCurrentFolderId(parent.id);
+        refreshFiles(parent.id);
+    }, [folderPath, refreshFiles]);
 
     // Initial load
     useEffect(() => {
-        if (isSignedIn) refreshFiles();
-    }, [isSignedIn, refreshFiles]);
+        if (isSignedIn) refreshFiles(currentFolderId);
+    }, [isSignedIn]); // Changed dependency to just isSignedIn to avoid loops, or careful with currentFolderId
 
     return {
         isInitialized,
@@ -88,11 +114,16 @@ export function useGoogleDrive() {
         files,
         loading,
         error,
+        currentFolderId,
+        folderPath,
         login,
         logout,
         refreshFiles,
+        navigateToFolder,
+        navigateUp,
         getFile: getFileContent,
         saveFile,
-        createFile
+        createFile: (name: string, content: string) => createFile(name, content, currentFolderId),
+        renameFile
     };
 }

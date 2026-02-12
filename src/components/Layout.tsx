@@ -1,11 +1,13 @@
-import React from 'react';
-import { FileText, Save, Moon, Sun, User } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { FileText, Save, Moon, Sun, User, Download } from 'lucide-react';
 import './Layout.css';
 
 const FONTS = [
-    { name: 'Sans Serif', value: 'Inter, system-ui, sans-serif' },
-    { name: 'Serif', value: 'Merriweather, Georgia, serif' },
-    { name: 'Monospace', value: '"Fira Code", monospace' },
+    { name: 'Sans Serif (Inter)', value: 'Inter, system-ui, sans-serif' },
+    { name: 'Serif (Merriweather)', value: 'Merriweather, Georgia, serif' },
+    { name: 'Monospace (Fira Code)', value: '"Fira Code", monospace' },
+    { name: 'Red Hat Display', value: '"Red Hat Display", sans-serif' },
+    { name: 'Montserrat', value: 'Montserrat, sans-serif' },
 ];
 
 interface LayoutProps {
@@ -19,6 +21,8 @@ interface LayoutProps {
     fileName?: string;
     currentFont?: string;
     onFontChange?: (font: string) => void;
+    onRename?: (newName: string) => void;
+    onDownload?: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -32,7 +36,40 @@ export const Layout: React.FC<LayoutProps> = ({
     fileName = 'Untitled.md',
     currentFont,
     onFontChange,
+    onRename,
+    onDownload,
 }) => {
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [tempName, setTempName] = useState(fileName);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        setTempName(fileName);
+    }, [fileName]);
+
+    useEffect(() => {
+        if (isEditingName && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [isEditingName]);
+
+    const handleNameSubmit = () => {
+        setIsEditingName(false);
+        if (tempName && tempName.trim() !== '' && tempName !== fileName && onRename) {
+            onRename(tempName);
+        } else {
+            setTempName(fileName);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') handleNameSubmit();
+        if (e.key === 'Escape') {
+            setIsEditingName(false);
+            setTempName(fileName);
+        }
+    };
+
     return (
         <div className="app-container">
             <header className="app-header">
@@ -41,10 +78,33 @@ export const Layout: React.FC<LayoutProps> = ({
                         <FileText size={24} />
                     </div>
                     <div className="file-info">
-                        <span className="file-name">{fileName}</span>
+                        {isEditingName ? (
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                className="file-name-input"
+                                value={tempName}
+                                onChange={(e) => setTempName(e.target.value)}
+                                onBlur={handleNameSubmit}
+                                onKeyDown={handleKeyDown}
+                            />
+                        ) : (
+                            <span
+                                className="file-name"
+                                onDoubleClick={() => onRename && setIsEditingName(true)}
+                                title="Double click to rename"
+                            >
+                                {fileName}
+                            </span>
+                        )}
                         <button className="icon-btn" onClick={onSave} title="Save (Ctrl+S)">
                             <Save size={18} />
                         </button>
+                        {onDownload && (
+                            <button className="icon-btn" onClick={onDownload} title="Download Local">
+                                <Download size={18} />
+                            </button>
+                        )}
                     </div>
                 </div>
 
