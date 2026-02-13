@@ -1,0 +1,35 @@
+.editor-wrapper {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-container {
+  height: 100% !important; /* Force fixed height to prevent growing */
+  font-size: 16px;
+}
+
+/* CodeMirror 6 internal overrides */
+.cm-editor {
+  height: 100% !important;
+}
+
+.cm-scroller {
+  overflow: auto !important; /* Ensure native scrolling */
+  height: 100% !important;
+}
+
+.cm-content {
+  min-height: 100%;
+  padding: 24px 32px !important;
+  max-width: none;
+  margin: 0;
+}
+
+.cm-gutters {
+  /* Dynamic via JS, but base styles here */
+  background-color: var(--bg-secondary);
+  border-right: none !important;
+}

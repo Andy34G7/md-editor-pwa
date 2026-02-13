@@ -5,7 +5,7 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapi
 
 let tokenClient: any;
 let gapiInited = false;
-let gisInited = false;
+
 
 export interface DriveFile {
     id: string;
@@ -46,7 +46,6 @@ export const initializeGisClient = (callback: (response: any) => void) => {
             callback(tokenResponse);
         },
     });
-    gisInited = true;
     return tokenClient;
 };
 
@@ -178,3 +177,50 @@ export const renameFile = async (fileId: string, newName: string) => {
         throw err;
     }
 };
+
+export const createPicker = (accessToken: string, onSelect: (file: any) => void) => {
+    if (!gapiInited || !accessToken) return;
+
+    // google.picker might not be typed, use any if needed or assume loaded
+    const google = (window as any).google;
+
+    const picker = new google.picker.PickerBuilder()
+        .enableFeature(google.picker.Feature.NAV_HIDDEN)
+        .setAppId(CLIENT_ID)
+        .setOAuthToken(accessToken)
+        .addView(new google.picker.DocsView().setIncludeFolders(true).setMimeTypes('text/markdown,text/plain,application/vnd.google-apps.folder').setSelectFolderEnabled(false))
+        .setDeveloperKey(API_KEY)
+        .setCallback((data: any) => {
+            if (data.action === google.picker.Action.PICKED) {
+                const file = data.docs[0];
+                onSelect(file);
+            }
+        })
+        .build();
+    picker.setVisible(true);
+};
+
+export const createFolderPicker = (accessToken: string, onSelect: (folder: any) => void) => {
+    if (!gapiInited || !accessToken) return;
+
+    const google = (window as any).google;
+
+    const picker = new google.picker.PickerBuilder()
+        .enableFeature(google.picker.Feature.NAV_HIDDEN)
+        .setAppId(CLIENT_ID)
+        .setOAuthToken(accessToken)
+        .addView(new google.picker.DocsView().setIncludeFolders(true).setMimeTypes('application/vnd.google-apps.folder').setSelectFolderEnabled(true))
+        .setDeveloperKey(API_KEY)
+        .setCallback((data: any) => {
+            if (data.action === google.picker.Action.PICKED) {
+                const folder = data.docs[0];
+                onSelect(folder);
+            }
+        })
+        .setTitle('Select a folder to save to')
+        .build();
+    picker.setVisible(true);
+};
+// ... existing code
+
+

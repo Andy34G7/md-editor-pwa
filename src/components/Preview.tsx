@@ -7,11 +7,12 @@ import './Preview.css';
 
 interface PreviewProps {
     content: string;
+    onScroll?: React.UIEventHandler<HTMLDivElement>;
 }
 
-export const Preview: React.FC<PreviewProps> = ({ content }) => {
+export const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(({ content, onScroll }, ref) => {
     return (
-        <div className="preview-container markdown-body">
+        <div ref={ref} className="preview-container markdown-body" onScroll={onScroll}>
             <Markdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeHighlight]}
@@ -20,4 +21,4 @@ export const Preview: React.FC<PreviewProps> = ({ content }) => {
             </Markdown>
         </div>
     );
-};
+});

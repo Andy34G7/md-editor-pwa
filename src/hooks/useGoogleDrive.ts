@@ -11,6 +11,8 @@ import {
     createFile,
     renameFile,
     getUserProfile,
+    createPicker,
+    createFolderPicker,
     DriveFile  // Import Shared Type
 } from '../services/google';
 
@@ -26,12 +28,14 @@ export function useGoogleDrive() {
     const [currentFolderId, setCurrentFolderId] = useState<string>('root');
     const [folderPath, setFolderPath] = useState<{ id: string, name: string }[]>([{ id: 'root', name: 'My Drive' }]);
 
+    const [accessToken, setAccessToken] = useState<string | null>(null);
+
     useEffect(() => {
         let gapiLoaded = false;
         let gisLoaded = false;
 
         const onGapiLoad = async () => {
-            await new Promise<void>((resolve) => gapi.load('client', resolve));
+            await new Promise<void>((resolve) => gapi.load('client:picker', resolve));
             await initializeGapiClient();
             gapiLoaded = true;
             if (gisLoaded) setIsInitialized(true);
@@ -40,6 +44,7 @@ export function useGoogleDrive() {
         const onGisLoad = () => {
             initializeGisClient(async (tokenResponse) => {
                 if (tokenResponse && tokenResponse.access_token) {
+                    setAccessToken(tokenResponse.access_token);
                     setIsSignedIn(true);
 
                     // Fetch user info
@@ -123,7 +128,21 @@ export function useGoogleDrive() {
         navigateUp,
         getFile: getFileContent,
         saveFile,
-        createFile: (name: string, content: string) => createFile(name, content, currentFolderId),
-        renameFile
+        createFile: (name: string, content: string, parentId?: string) => createFile(name, content, parentId || currentFolderId),
+        renameFile,
+        openPicker: (onSelect: (file: any) => void) => {
+            if (accessToken) {
+                createPicker(accessToken, onSelect);
+            } else {
+                console.error("No access token available for picker");
+            }
+        },
+        openFolderPicker: (onSelect: (folder: any) => void) => {
+            if (accessToken) {
+                createFolderPicker(accessToken, onSelect);
+            } else {
+                console.error("No access token available for folder picker");
+            }
+        }
     };
 }

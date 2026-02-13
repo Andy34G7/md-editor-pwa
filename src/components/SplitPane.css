@@ -8,7 +8,7 @@
 .split-pane-left,
 .split-pane-right {
   height: 100%;
-  overflow: auto; /* Allow scrolling within panes */
+  overflow: hidden; /* Let children (Editor/Preview) handle their own scrolling */
 }
 
 .split-pane-divider {
