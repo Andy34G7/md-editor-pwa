@@ -205,11 +205,16 @@ export const createFolderPicker = (accessToken: string, onSelect: (folder: any) 
 
     const google = (window as any).google;
 
+    const docsView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setIncludeFolders(true)
+        .setMimeTypes('application/vnd.google-apps.folder')
+        .setSelectFolderEnabled(true);
+
     const picker = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN)
         .setAppId(CLIENT_ID)
         .setOAuthToken(accessToken)
-        .addView(new google.picker.DocsView().setIncludeFolders(true).setMimeTypes('application/vnd.google-apps.folder').setSelectFolderEnabled(true))
+        .addView(docsView)
         .setDeveloperKey(API_KEY)
         .setCallback((data: any) => {
             if (data.action === google.picker.Action.PICKED) {
@@ -221,6 +226,3 @@ export const createFolderPicker = (accessToken: string, onSelect: (folder: any) 
         .build();
     picker.setVisible(true);
 };
-// ... existing code
-
-

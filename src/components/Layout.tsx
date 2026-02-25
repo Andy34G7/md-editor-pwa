@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Save, Moon, Sun, User, Download, Printer, ListOrdered, Columns, Menu as MenuIcon, X, FolderOpen, FilePlus, LogOut } from 'lucide-react';
+import { FileText, Save, Moon, Sun, User, Download, Printer, ListOrdered, Columns, Menu as MenuIcon, X, FolderOpen, FilePlus, LogOut, Loader, Check, CloudOff } from 'lucide-react';
 import './Layout.css';
 
 const FONTS = [
@@ -32,6 +32,7 @@ interface LayoutProps {
     onToggleLineNumbers?: () => void;
     showPreview?: boolean;
     onTogglePreview?: () => void;
+    autosaveStatus?: 'saved' | 'saving' | 'unsaved';
 }
 
 const FONT_SIZES = [12, 14, 16, 18, 20, 24, 30];
@@ -58,6 +59,7 @@ export const Layout: React.FC<LayoutProps> = ({
     onToggleLineNumbers,
     showPreview,
     onTogglePreview,
+    autosaveStatus
 }) => {
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState(fileName);
@@ -145,6 +147,35 @@ export const Layout: React.FC<LayoutProps> = ({
                             <Save size={18} />
                         </button>
                     </div>
+                    {autosaveStatus && (
+                        <div className="autosave-status" style={{
+                            marginLeft: '15px',
+                            fontSize: '0.8rem',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}>
+                            {autosaveStatus === 'saving' && (
+                                <>
+                                    <Loader size={12} className="spin" />
+                                    <span className="desktop-only">Saving...</span>
+                                </>
+                            )}
+                            {autosaveStatus === 'saved' && (
+                                <>
+                                    <Check size={12} />
+                                    <span className="desktop-only">Saved</span>
+                                </>
+                            )}
+                             {autosaveStatus === 'unsaved' && (
+                                <>
+                                    <CloudOff size={12} />
+                                    <span className="desktop-only">Unsaved</span>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Desktop Menu */}

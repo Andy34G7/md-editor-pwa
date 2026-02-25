@@ -38,6 +38,25 @@ function App() {
     const [showLineNumbers, setShowLineNumbers] = useState(true);
     const [showPreview, setShowPreview] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
+    const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+
+    // Use refs to access latest state inside interval without triggering re-renders/resets
+    const markdownRef = useRef(markdown);
+    const isDirtyRef = useRef(isDirty);
+    const currentFileRef = useRef(currentFile);
+
+    useEffect(() => {
+        markdownRef.current = markdown;
+    }, [markdown]);
+
+    useEffect(() => {
+        isDirtyRef.current = isDirty;
+    }, [isDirty]);
+
+    useEffect(() => {
+        currentFileRef.current = currentFile;
+    }, [currentFile]);
+
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -58,6 +77,33 @@ function App() {
         document.documentElement.style.setProperty('--preview-font', font);
         document.documentElement.style.setProperty('--preview-font-size', `${fontSize}px`);
     }, [font, fontSize]);
+
+    // Autosave Logic (Fixed Interval)
+    useEffect(() => {
+        let interval: any;
+
+        if (isSignedIn) {
+            interval = setInterval(async () => {
+                // Check conditions using refs to avoid resetting timer
+                if (currentFileRef.current && isDirtyRef.current) {
+                    try {
+                        setAutosaveStatus('saving');
+                        await saveFile(currentFileRef.current.id, markdownRef.current);
+                        setIsDirty(false); // This triggers re-render, but interval is stable on [isSignedIn, saveFile]
+                        setAutosaveStatus('saved');
+                    } catch (err) {
+                        console.error('Autosave failed', err);
+                        setAutosaveStatus('unsaved');
+                    }
+                }
+            }, 30000); // 30 seconds fixed interval
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isSignedIn, saveFile]); // Only re-run if auth state changes
+
 
     // Sync Scrolling Logic
     const handleEditorScroll = (scrollTop: number, scrollHeight: number, clientHeight: number) => {
@@ -118,6 +164,7 @@ function App() {
             setMarkdown(content as string);
             setCurrentFile(file);
             setIsDirty(false);
+            setAutosaveStatus('saved');
         } catch (err) {
             console.error('Error loading file', err);
             alert('Failed to load file');
@@ -129,33 +176,47 @@ function App() {
         if (!isSignedIn) return alert('Please sign in to save');
 
         try {
+            setAutosaveStatus('saving');
             if (currentFile) {
                 await saveFile(currentFile.id, markdown);
                 setIsDirty(false);
+                setAutosaveStatus('saved');
                 alert('Saved successfully!');
             } else {
                 // New File Flow: Select Folder -> Name -> Create
                 openFolderPicker((folder: any) => {
                     const name = prompt('Enter file name:', 'New Document.md');
-                    if (!name) return;
+                    if (!name) {
+                         setAutosaveStatus('unsaved');
+                         return;
+                    }
 
                     createFile(name, markdown, folder.id).then((newFile) => {
                         refreshFiles();
                         setCurrentFile(newFile as any);
                         setIsDirty(false);
+                        setAutosaveStatus('saved');
                         alert('Saved successfully!');
                     }).catch(err => {
                         console.error('Error creating file', err);
                         alert('Failed to create file');
+                         setAutosaveStatus('unsaved');
                     });
                 });
             }
         } catch (err) {
             console.error('Error saving', err);
             alert('Failed to save');
+            setAutosaveStatus('unsaved');
         }
     };
 
+    // Update status when dirtied manually
+    const handleContentChange = (val: string) => {
+        setMarkdown(val);
+        setIsDirty(true);
+        setAutosaveStatus('unsaved');
+    };
 
 
     const handleLogout = () => {
@@ -253,6 +314,7 @@ function App() {
         setCurrentFile(null);
         setMarkdown('');
         setIsDirty(false);
+        setAutosaveStatus('saved');
     };
 
     const handleOpen = () => {
@@ -286,6 +348,7 @@ function App() {
                 onToggleLineNumbers={() => setShowLineNumbers(!showLineNumbers)}
                 showPreview={showPreview}
                 onTogglePreview={() => setShowPreview(!showPreview)}
+                autosaveStatus={autosaveStatus}
             >
                 {
                     isMobile ? (
@@ -298,10 +361,7 @@ function App() {
                         ) : (
                             <Editor
                                 value={markdown}
-                                onChange={(val) => {
-                                    setMarkdown(val);
-                                    setIsDirty(true);
-                                }}
+                                onChange={handleContentChange}
                                 fontSize={fontSize}
                                 fontFamily={font}
                                 hideLineNumbers={!showLineNumbers}
@@ -316,10 +376,7 @@ function App() {
                                 left={
                                     <Editor
                                         value={markdown}
-                                        onChange={(val) => {
-                                            setMarkdown(val);
-                                            setIsDirty(true);
-                                        }}
+                                        onChange={handleContentChange}
                                         fontSize={fontSize}
                                         fontFamily={font}
                                         hideLineNumbers={!showLineNumbers}
@@ -339,10 +396,7 @@ function App() {
                         ) : (
                             <Editor
                                 value={markdown}
-                                onChange={(val) => {
-                                    setMarkdown(val);
-                                    setIsDirty(true);
-                                }}
+                                onChange={handleContentChange}
                                 fontSize={fontSize}
                                 fontFamily={font}
                                 hideLineNumbers={!showLineNumbers}
