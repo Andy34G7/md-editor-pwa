@@ -168,9 +168,8 @@ export const constructMultipartBody = (name: string, content: string, parentId: 
 };
 
 export const createFile = async (name: string, content: string, parentId: string = 'root') => {
-    const { body, boundary } = constructMultipartBody(name, content, parentId);
-
     try {
+        const { body, boundary } = constructMultipartBody(name, content, parentId);
         const response = await gapi.client.request({
             'path': '/upload/drive/v3/files',
             'method': 'POST',
