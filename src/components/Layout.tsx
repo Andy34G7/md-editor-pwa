@@ -197,7 +197,7 @@ export const Layout: React.FC<LayoutProps> = ({
                                     <span className="desktop-only">Saved</span>
                                 </>
                             )}
-                             {autosaveStatus === 'unsaved' && (
+                            {autosaveStatus === 'unsaved' && (
                                 <>
                                     <CloudOff size={12} aria-hidden="true" />
                                     <span className="desktop-only">Unsaved</span>
