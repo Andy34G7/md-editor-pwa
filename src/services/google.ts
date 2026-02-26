@@ -200,7 +200,7 @@ export const createPicker = (accessToken: string, onSelect: (file: any) => void)
     picker.setVisible(true);
 };
 
-export const createFolderPicker = (accessToken: string, onSelect: (folder: any) => void) => {
+export const createFolderPicker = (accessToken: string, onSelect: (folder: any) => void, onCancel?: () => void) => {
     if (!gapiInited || !accessToken) return;
 
     const google = (window as any).google;
@@ -220,6 +220,8 @@ export const createFolderPicker = (accessToken: string, onSelect: (folder: any) 
             if (data.action === google.picker.Action.PICKED) {
                 const folder = data.docs[0];
                 onSelect(folder);
+            } else if (data.action === google.picker.Action.CANCEL) {
+                if (onCancel) onCancel();
             }
         })
         .setTitle('Select a folder to save to')

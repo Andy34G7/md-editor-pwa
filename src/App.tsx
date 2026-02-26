@@ -216,42 +216,47 @@ function App() {
                 setIsDirty(false);
                 setAutosaveStatus('saved');
                 showToast('Saved successfully!', 'success');
+                isSavingRef.current = false; // Release lock immediately for existing file save
             } else {
                 // New File Flow: Select Folder -> Name -> Create
-                // Temporarily release lock for user interaction, though logic differs here as it's a new file
-                isSavingRef.current = false;
-                openFolderPicker((folder: any) => {
-                    const name = prompt('Enter file name:', 'New Document.md');
-                    if (!name) {
-                         setAutosaveStatus(null); // Reset status if cancelled
-                         return;
-                    }
+                // IMPORTANT: Do NOT release lock here. Wait until the flow is complete or cancelled.
+                openFolderPicker(
+                    // Success Callback
+                    (folder: any) => {
+                        const name = prompt('Enter file name:', 'New Document.md');
+                        if (!name) {
+                             setAutosaveStatus(null); // Reset status if cancelled
+                             isSavingRef.current = false; // Release lock on cancel
+                             return;
+                        }
 
-                    // Re-acquire lock conceptually, though new file creation is distinct
-                    createFile(name, markdown, folder.id).then((newFile) => {
-                        refreshFiles();
-                        setCurrentFile(newFile as any);
-                        setIsDirty(false);
-                        setAutosaveStatus('saved');
-                        showToast('Saved successfully!', 'success');
-                    }).catch(err => {
-                        console.error('Error creating file', err);
-                        showToast('Failed to create file', 'error');
-                         setAutosaveStatus('unsaved');
-                    });
-                });
-                return; // Exit here as the async flow is handled in callback
+                        createFile(name, markdown, folder.id).then((newFile) => {
+                            refreshFiles();
+                            setCurrentFile(newFile as any);
+                            setIsDirty(false);
+                            setAutosaveStatus('saved');
+                            showToast('Saved successfully!', 'success');
+                        }).catch(err => {
+                            console.error('Error creating file', err);
+                            showToast('Failed to create file', 'error');
+                             setAutosaveStatus('unsaved');
+                        }).finally(() => {
+                            isSavingRef.current = false; // Release lock on completion
+                        });
+                    },
+                    // Cancel Callback
+                    () => {
+                        isSavingRef.current = false; // Release lock on picker cancel
+                        setAutosaveStatus(null);
+                    }
+                );
+                // NOTE: We do NOT release lock in a finally block here because the async flow continues in callbacks
             }
         } catch (err) {
             console.error('Error saving', err);
             showToast('Failed to save', 'error');
             setAutosaveStatus('unsaved');
-        } finally {
-            // Only release lock if we didn't go into the new file flow (which releases it earlier/differently)
-            // Ideally we track if we are in the "save existing file" path.
-            if (currentFile) {
-                isSavingRef.current = false;
-            }
+            isSavingRef.current = false; // Release lock on error
         }
     };
 
