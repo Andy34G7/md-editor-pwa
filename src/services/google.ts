@@ -135,11 +135,17 @@ export const constructMultipartBody = (name: string, content: string, parentId: 
     let boundary = generateBoundary();
     let attempts = 0;
     const maxAttempts = 10;
-    while (content.includes(boundary)) {
+    let boundaryMarker = '--' + boundary;
+    while (
+        name.includes(boundaryMarker) ||
+        parentId.includes(boundaryMarker) ||
+        content.includes(boundaryMarker)
+    ) {
         if (attempts >= maxAttempts) {
             throw new Error('Failed to generate a unique boundary after ' + maxAttempts + ' attempts');
         }
         boundary = generateBoundary();
+        boundaryMarker = '--' + boundary;
         attempts++;
     }
 
