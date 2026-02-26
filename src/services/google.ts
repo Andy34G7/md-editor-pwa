@@ -125,12 +125,21 @@ export const saveFile = async (fileId: string, content: string) => {
     }
 };
 
-export const createFile = async (name: string, content: string, parentId: string = 'root') => {
-    const boundary = '-------314159265358979323846';
+const generateBoundary = () => {
+    const array = new Uint8Array(24);
+    crypto.getRandomValues(array);
+    return '-------' + Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+};
+
+export const constructMultipartBody = (name: string, content: string, parentId: string, contentType: string = 'text/markdown') => {
+    let boundary = generateBoundary();
+    while (content.includes(boundary)) {
+        boundary = generateBoundary();
+    }
+
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
 
-    const contentType = 'text/markdown';
     const metadata = {
         'name': name,
         'mimeType': contentType,
@@ -146,6 +155,15 @@ export const createFile = async (name: string, content: string, parentId: string
         content +
         close_delim;
 
+    return {
+        body: multipartRequestBody,
+        boundary: boundary
+    };
+};
+
+export const createFile = async (name: string, content: string, parentId: string = 'root') => {
+    const { body, boundary } = constructMultipartBody(name, content, parentId);
+
     try {
         const response = await gapi.client.request({
             'path': '/upload/drive/v3/files',
@@ -154,7 +172,7 @@ export const createFile = async (name: string, content: string, parentId: string
             'headers': {
                 'Content-Type': 'multipart/related; boundary="' + boundary + '"'
             },
-            'body': multipartRequestBody
+            'body': body
         });
         return response.result;
     } catch (err) {
