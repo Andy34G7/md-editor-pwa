@@ -135,17 +135,11 @@ export const constructMultipartBody = (name: string, content: string, parentId: 
     let boundary = generateBoundary();
     let attempts = 0;
     const maxAttempts = 10;
-    let boundaryMarker = '--' + boundary;
-    while (
-        name.includes(boundaryMarker) ||
-        parentId.includes(boundaryMarker) ||
-        content.includes(boundaryMarker)
-    ) {
+    while (content.includes(boundary)) {
         if (attempts >= maxAttempts) {
-            throw new Error('Failed to generate a unique boundary after ' + maxAttempts + ' retries');
+            throw new Error('Failed to generate a unique boundary after ' + maxAttempts + ' attempts');
         }
         boundary = generateBoundary();
-        boundaryMarker = '--' + boundary;
         attempts++;
     }
 
@@ -174,8 +168,9 @@ export const constructMultipartBody = (name: string, content: string, parentId: 
 };
 
 export const createFile = async (name: string, content: string, parentId: string = 'root') => {
+    const { body, boundary } = constructMultipartBody(name, content, parentId);
+
     try {
-        const { body, boundary } = constructMultipartBody(name, content, parentId);
         const response = await gapi.client.request({
             'path': '/upload/drive/v3/files',
             'method': 'POST',
