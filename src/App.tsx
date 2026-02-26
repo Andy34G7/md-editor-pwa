@@ -4,6 +4,7 @@ import { SplitPane } from './components/SplitPane';
 import { Editor } from './components/Editor';
 import { Preview } from './components/Preview';
 import { FilePicker } from './components/FilePicker';
+import { Toast, ToastType } from './components/Toast';
 import { useGoogleDrive } from './hooks/useGoogleDrive';
 import { DriveFile } from './services/google';
 
@@ -41,6 +42,17 @@ function App() {
     const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'unsaved' | null>(null);
     const [autosaveEnabled, setAutosaveEnabled] = useState(true);
     const [autosaveInterval, setAutosaveInterval] = useState(30000); // ms
+
+    // Toast State
+    const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+    const showToast = (message: string, type: ToastType = 'info') => {
+        setToast({ message, type });
+    };
+
+    const closeToast = () => {
+        setToast(null);
+    };
 
     // Use refs to access latest state inside interval without triggering re-renders/resets
     const markdownRef = useRef(markdown);
@@ -107,8 +119,7 @@ function App() {
                     } catch (err) {
                         console.error('Autosave failed', err);
                         setAutosaveStatus('unsaved');
-                        // Show visible error notification
-                        alert('Autosave failed. Please check your connection and try saving manually.');
+                        showToast('Autosave failed. Please check your connection.', 'error');
                     } finally {
                         isSavingRef.current = false;
                     }
@@ -184,13 +195,13 @@ function App() {
             setAutosaveStatus('saved');
         } catch (err) {
             console.error('Error loading file', err);
-            alert('Failed to load file');
+            showToast('Failed to load file', 'error');
             setShowFilePicker(true);
         }
     };
 
     const handleSave = async () => {
-        if (!isSignedIn) return alert('Please sign in to save');
+        if (!isSignedIn) return showToast('Please sign in to save', 'info');
 
         try {
             setAutosaveStatus('saving');
@@ -198,7 +209,7 @@ function App() {
                 await saveFile(currentFile.id, markdown);
                 setIsDirty(false);
                 setAutosaveStatus('saved');
-                alert('Saved successfully!');
+                showToast('Saved successfully!', 'success');
             } else {
                 // New File Flow: Select Folder -> Name -> Create
                 openFolderPicker((folder: any) => {
@@ -213,17 +224,17 @@ function App() {
                         setCurrentFile(newFile as any);
                         setIsDirty(false);
                         setAutosaveStatus('saved');
-                        alert('Saved successfully!');
+                        showToast('Saved successfully!', 'success');
                     }).catch(err => {
                         console.error('Error creating file', err);
-                        alert('Failed to create file');
+                        showToast('Failed to create file', 'error');
                          setAutosaveStatus('unsaved');
                     });
                 });
             }
         } catch (err) {
             console.error('Error saving', err);
-            alert('Failed to save');
+            showToast('Failed to save', 'error');
             setAutosaveStatus('unsaved');
         }
     };
@@ -254,7 +265,7 @@ function App() {
             refreshFiles(); // Refresh list to show new name
         } catch (err) {
             console.error('Failed to rename', err);
-            alert('Failed to rename file');
+            showToast('Failed to rename file', 'error');
         }
     };
 
@@ -272,10 +283,10 @@ function App() {
 
     const handlePrint = () => {
         const content = previewRef.current?.innerHTML || '';
-        if (!content) return alert('Nothing to print');
+        if (!content) return showToast('Nothing to print', 'info');
 
         const printWindow = window.open('', '_blank');
-        if (!printWindow) return alert('Please allow popups to print');
+        if (!printWindow) return showToast('Please allow popups to print', 'error');
 
         const title = currentFile ? currentFile.name.replace(/\.md$/i, '') : 'Document';
 
@@ -448,6 +459,16 @@ function App() {
                         setMarkdown('');
                     }}
                 />
+            )}
+
+            {toast && (
+                <div className="toast-container">
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={closeToast}
+                    />
+                </div>
             )}
         </>
     );
