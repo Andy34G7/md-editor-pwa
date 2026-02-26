@@ -133,8 +133,14 @@ const generateBoundary = () => {
 
 export const constructMultipartBody = (name: string, content: string, parentId: string, contentType: string = 'text/markdown') => {
     let boundary = generateBoundary();
+    let attempts = 0;
+    const maxAttempts = 10;
     while (content.includes(boundary)) {
+        if (attempts >= maxAttempts) {
+            throw new Error('Failed to generate a unique boundary after ' + maxAttempts + ' attempts');
+        }
         boundary = generateBoundary();
+        attempts++;
     }
 
     const delimiter = "\r\n--" + boundary + "\r\n";
