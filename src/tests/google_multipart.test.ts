@@ -27,14 +27,15 @@ describe('Multipart Body Construction', () => {
         expect(boundary).not.toBe(staticBoundary);
     });
 
-    it('should ensure boundary does not collide with content', () => {
-        // We verify that the generated boundary is not present in the original content.
-        const content = 'Some content that might have a collision if we were unlucky';
+    it('should use the boundary consistently in the multipart body', () => {
+        const content = 'Some deterministic content';
         const name = 'test.md';
         const parentId = 'root';
 
-        const { boundary } = constructMultipartBody(name, content, parentId);
+        const { body, boundary } = constructMultipartBody(name, content, parentId);
 
-        expect(content.includes(boundary)).toBe(false);
+        const parts = body.split(boundary);
+        // Expect at least a starting part, a metadata/content part, and an ending part
+        expect(parts.length).toBeGreaterThan(2);
     });
 });
