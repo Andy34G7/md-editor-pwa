@@ -32,7 +32,7 @@ interface LayoutProps {
     onToggleLineNumbers?: () => void;
     showPreview?: boolean;
     onTogglePreview?: () => void;
-    autosaveStatus?: 'saved' | 'saving' | 'unsaved';
+    autosaveStatus?: 'saved' | 'saving' | 'unsaved' | null;
     autosaveEnabled?: boolean;
     onToggleAutosave?: () => void;
     autosaveInterval?: number;
@@ -63,10 +63,10 @@ export const Layout: React.FC<LayoutProps> = ({
     onToggleLineNumbers,
     showPreview,
     onTogglePreview,
-    autosaveStatus,
-    autosaveEnabled,
+    autosaveStatus = null,
+    autosaveEnabled = true,
     onToggleAutosave,
-    autosaveInterval,
+    autosaveInterval = 30000,
     onAutosaveIntervalChange,
 }) => {
     const [isEditingName, setIsEditingName] = useState(false);
@@ -122,6 +122,15 @@ export const Layout: React.FC<LayoutProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isMenuOpen, isProfileMenuOpen, isSettingsOpen]);
 
+    const getStatusText = (status: string | null) => {
+        switch (status) {
+            case 'saving': return 'Saving changes...';
+            case 'saved': return 'All changes saved';
+            case 'unsaved': return 'Unsaved changes';
+            default: return '';
+        }
+    };
+
     return (
         <div className="app-container">
             <header className="app-header">
@@ -159,30 +168,38 @@ export const Layout: React.FC<LayoutProps> = ({
                             <Save size={18} />
                         </button>
                     </div>
-                    {autosaveStatus && autosaveEnabled && (
-                        <div className="autosave-status" style={{
-                            marginLeft: '15px',
-                            fontSize: '0.8rem',
-                            color: 'var(--text-secondary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                        }}>
+                    {autosaveStatus && autosaveEnabled && user && (
+                        <div
+                            className="autosave-status"
+                            style={{
+                                marginLeft: '15px',
+                                fontSize: '0.8rem',
+                                color: 'var(--text-secondary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}
+                            aria-live="polite"
+                            role="status"
+                        >
+                            <span className="visually-hidden" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+                                {getStatusText(autosaveStatus)}
+                            </span>
                             {autosaveStatus === 'saving' && (
                                 <>
-                                    <Loader size={12} className="spin" />
+                                    <Loader size={12} className="spin" aria-hidden="true" />
                                     <span className="desktop-only">Saving...</span>
                                 </>
                             )}
                             {autosaveStatus === 'saved' && (
                                 <>
-                                    <Check size={12} />
+                                    <Check size={12} aria-hidden="true" />
                                     <span className="desktop-only">Saved</span>
                                 </>
                             )}
                              {autosaveStatus === 'unsaved' && (
                                 <>
-                                    <CloudOff size={12} />
+                                    <CloudOff size={12} aria-hidden="true" />
                                     <span className="desktop-only">Unsaved</span>
                                 </>
                             )}
@@ -218,7 +235,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             )}
                         </div>
                     )}
-                    {onToggleAutosave && (
+                    {onToggleAutosave && user && (
                          <div className="settings-container" style={{ position: 'relative' }}>
                             <button
                                 className={`icon-btn ${isSettingsOpen ? 'active' : ''}`}
@@ -403,7 +420,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
                         <div className="mobile-menu-divider" />
 
-                        {onToggleAutosave && (
+                        {onToggleAutosave && user && (
                              <div className="mobile-menu-section">
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <label htmlFor="mobile-autosave-toggle">Autosave</label>

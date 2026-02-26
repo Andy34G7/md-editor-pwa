@@ -38,7 +38,7 @@ function App() {
     const [showLineNumbers, setShowLineNumbers] = useState(true);
     const [showPreview, setShowPreview] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
-    const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+    const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'unsaved' | null>(null);
     const [autosaveEnabled, setAutosaveEnabled] = useState(true);
     const [autosaveInterval, setAutosaveInterval] = useState(30000); // ms
 
@@ -47,6 +47,7 @@ function App() {
     const isDirtyRef = useRef(isDirty);
     const currentFileRef = useRef(currentFile);
     const autosaveEnabledRef = useRef(autosaveEnabled);
+    const isSavingRef = useRef(false); // Flag to track saving status
 
     useEffect(() => {
         markdownRef.current = markdown;
@@ -93,6 +94,11 @@ function App() {
             interval = setInterval(async () => {
                 // Check conditions using refs to avoid resetting timer
                 if (currentFileRef.current && isDirtyRef.current && autosaveEnabledRef.current) {
+                    if (isSavingRef.current) {
+                        return; // Skip if already saving
+                    }
+
+                    isSavingRef.current = true;
                     try {
                         setAutosaveStatus('saving');
                         await saveFile(currentFileRef.current.id, markdownRef.current);
@@ -101,6 +107,10 @@ function App() {
                     } catch (err) {
                         console.error('Autosave failed', err);
                         setAutosaveStatus('unsaved');
+                        // Show visible error notification
+                        alert('Autosave failed. Please check your connection and try saving manually.');
+                    } finally {
+                        isSavingRef.current = false;
                     }
                 }
             }, autosaveInterval);
@@ -194,7 +204,7 @@ function App() {
                 openFolderPicker((folder: any) => {
                     const name = prompt('Enter file name:', 'New Document.md');
                     if (!name) {
-                         setAutosaveStatus('unsaved');
+                         setAutosaveStatus(null); // Reset status if cancelled
                          return;
                     }
 
@@ -222,7 +232,9 @@ function App() {
     const handleContentChange = (val: string) => {
         setMarkdown(val);
         setIsDirty(true);
-        setAutosaveStatus('unsaved');
+        if (currentFile) {
+            setAutosaveStatus('unsaved');
+        }
     };
 
 
@@ -231,6 +243,7 @@ function App() {
         logout();
         setCurrentFile(null);
         setMarkdown('# Welcome to MD Editor\n\nSign in with Google to edit your markdown files.');
+        setAutosaveStatus(null);
     };
 
     const handleRename = async (newName: string) => {
@@ -321,7 +334,7 @@ function App() {
         setCurrentFile(null);
         setMarkdown('');
         setIsDirty(false);
-        setAutosaveStatus('saved');
+        setAutosaveStatus(null);
     };
 
     const handleOpen = () => {
