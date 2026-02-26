@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import './Toast.css';
 
@@ -12,13 +12,23 @@ interface ToastProps {
 }
 
 export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose, duration = 5000 }) => {
+    // Use a ref to store the latest onClose callback.
+    // This allows us to call the latest version of the callback without including it
+    // in the useEffect dependency array, preventing unnecessary timer resets
+    // if the parent component recreates the callback on every render.
+    const onCloseRef = useRef(onClose);
+
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
+
     useEffect(() => {
         const timer = setTimeout(() => {
-            onClose();
+            onCloseRef.current();
         }, duration);
 
         return () => clearTimeout(timer);
-    }, [duration, onClose]);
+    }, [duration]);
 
     const getIcon = () => {
         switch (type) {
@@ -32,7 +42,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose, d
         <div className={`toast ${type}`}>
             {getIcon()}
             <span className="toast-message">{message}</span>
-            <button className="toast-close" onClick={onClose} aria-label="Close notification">
+            <button className="toast-close" onClick={onClose}>
                 <X size={16} />
             </button>
         </div>

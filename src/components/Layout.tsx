@@ -197,7 +197,7 @@ export const Layout: React.FC<LayoutProps> = ({
                                     <span className="desktop-only">Saved</span>
                                 </>
                             )}
-                            {autosaveStatus === 'unsaved' && (
+                             {autosaveStatus === 'unsaved' && (
                                 <>
                                     <CloudOff size={12} aria-hidden="true" />
                                     <span className="desktop-only">Unsaved</span>
@@ -241,18 +241,11 @@ export const Layout: React.FC<LayoutProps> = ({
                                 className={`icon-btn ${isSettingsOpen ? 'active' : ''}`}
                                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                                 title="Settings"
-                                aria-haspopup="true"
-                                aria-expanded={isSettingsOpen}
-                                aria-controls="settings-menu"
                             >
                                 <Settings size={18} />
                             </button>
                             {isSettingsOpen && (
-                                <div
-                                    id="settings-menu"
-                                    className="profile-dropdown"
-                                    style={{ right: 0, minWidth: '220px', padding: '10px' }}
-                                >
+                                <div className="profile-dropdown" style={{ right: 0, minWidth: '220px', padding: '10px' }}>
                                     <div className="mobile-menu-section" style={{ padding: '0 5px 10px 5px', borderBottom: '1px solid var(--border-color)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                                             <label style={{ cursor: 'pointer', margin: 0, fontSize: '0.9rem' }} htmlFor="autosave-toggle">Autosave</label>
@@ -266,9 +259,8 @@ export const Layout: React.FC<LayoutProps> = ({
                                         </div>
                                         {autosaveEnabled && onAutosaveIntervalChange && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                <label htmlFor="autosave-interval" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Interval</label>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Interval</label>
                                                 <select
-                                                    id="autosave-interval"
                                                     className="font-select"
                                                     value={autosaveInterval}
                                                     onChange={(e) => onAutosaveIntervalChange(Number(e.target.value))}
