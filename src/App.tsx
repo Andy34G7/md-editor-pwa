@@ -99,19 +99,11 @@ function App() {
                     }
 
                     isSavingRef.current = true;
-                    // Capture the content snapshot being saved so we can detect newer edits.
-                    const contentToSave = markdownRef.current;
                     try {
                         setAutosaveStatus('saving');
-                        await saveFile(currentFileRef.current.id, contentToSave);
-                        // Only clear dirty / mark as saved if no newer edits occurred during the save.
-                        if (markdownRef.current === contentToSave) {
-                            setIsDirty(false); // This triggers re-render, but interval is stable on [isSignedIn, saveFile, autosaveInterval, autosaveEnabled]
-                            setAutosaveStatus('saved');
-                        } else {
-                            // New edits have occurred; keep dirty flag set and reflect unsaved changes.
-                            setAutosaveStatus('unsaved');
-                        }
+                        await saveFile(currentFileRef.current.id, markdownRef.current);
+                        setIsDirty(false); // This triggers re-render, but interval is stable on [isSignedIn, saveFile, autosaveInterval, autosaveEnabled]
+                        setAutosaveStatus('saved');
                     } catch (err) {
                         console.error('Autosave failed', err);
                         setAutosaveStatus('unsaved');

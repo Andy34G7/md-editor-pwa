@@ -182,7 +182,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             aria-live="polite"
                             role="status"
                         >
-                            <span className="visually-hidden" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+                            <span className="visually-hidden">
                                 {getStatusText(autosaveStatus)}
                             </span>
                             {autosaveStatus === 'saving' && (
