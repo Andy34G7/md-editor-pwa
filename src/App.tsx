@@ -39,11 +39,14 @@ function App() {
     const [showPreview, setShowPreview] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
     const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+    const [autosaveEnabled, setAutosaveEnabled] = useState(true);
+    const [autosaveInterval, setAutosaveInterval] = useState(30000); // ms
 
     // Use refs to access latest state inside interval without triggering re-renders/resets
     const markdownRef = useRef(markdown);
     const isDirtyRef = useRef(isDirty);
     const currentFileRef = useRef(currentFile);
+    const autosaveEnabledRef = useRef(autosaveEnabled);
 
     useEffect(() => {
         markdownRef.current = markdown;
@@ -56,6 +59,10 @@ function App() {
     useEffect(() => {
         currentFileRef.current = currentFile;
     }, [currentFile]);
+
+    useEffect(() => {
+        autosaveEnabledRef.current = autosaveEnabled;
+    }, [autosaveEnabled]);
 
 
     useEffect(() => {
@@ -78,32 +85,31 @@ function App() {
         document.documentElement.style.setProperty('--preview-font-size', `${fontSize}px`);
     }, [font, fontSize]);
 
-    // Autosave Logic (Conditional Interval)
+    // Autosave Logic (Fixed Interval)
     useEffect(() => {
         let interval: any;
 
-        // Only start autosave timer when signed in, a file is selected, and there are unsaved changes
-        if (isSignedIn && isDirty && currentFile) {
+        if (isSignedIn && autosaveEnabled) {
             interval = setInterval(async () => {
                 // Check conditions using refs to avoid resetting timer
-                if (currentFileRef.current && isDirtyRef.current) {
+                if (currentFileRef.current && isDirtyRef.current && autosaveEnabledRef.current) {
                     try {
                         setAutosaveStatus('saving');
                         await saveFile(currentFileRef.current.id, markdownRef.current);
-                        setIsDirty(false); // This triggers re-render; effect cleanup will clear the interval
+                        setIsDirty(false); // This triggers re-render, but interval is stable on [isSignedIn, saveFile, autosaveInterval, autosaveEnabled]
                         setAutosaveStatus('saved');
                     } catch (err) {
                         console.error('Autosave failed', err);
                         setAutosaveStatus('unsaved');
                     }
                 }
-            }, 30000); // 30 seconds interval, only active while there are unsaved changes
+            }, autosaveInterval);
         }
 
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [isSignedIn, isDirty, currentFile, saveFile]); // Re-run when auth, dirty state, file, or save handler changes
+    }, [isSignedIn, saveFile, autosaveInterval, autosaveEnabled]); // Re-run if interval or enabled state changes
 
 
     // Sync Scrolling Logic
@@ -350,6 +356,10 @@ function App() {
                 showPreview={showPreview}
                 onTogglePreview={() => setShowPreview(!showPreview)}
                 autosaveStatus={autosaveStatus}
+                autosaveEnabled={autosaveEnabled}
+                onToggleAutosave={() => setAutosaveEnabled(!autosaveEnabled)}
+                autosaveInterval={autosaveInterval}
+                onAutosaveIntervalChange={setAutosaveInterval}
             >
                 {
                     isMobile ? (
