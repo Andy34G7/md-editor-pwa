@@ -259,8 +259,9 @@ export const Layout: React.FC<LayoutProps> = ({
                                         </div>
                                         {autosaveEnabled && onAutosaveIntervalChange && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Interval</label>
+                                                <label htmlFor="autosave-interval" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Interval</label>
                                                 <select
+                                                    id="autosave-interval"
                                                     className="font-select"
                                                     value={autosaveInterval}
                                                     onChange={(e) => onAutosaveIntervalChange(Number(e.target.value))}
@@ -433,8 +434,9 @@ export const Layout: React.FC<LayoutProps> = ({
                                 </div>
                                 {autosaveEnabled && onAutosaveIntervalChange && (
                                      <div style={{ marginTop: '8px' }}>
-                                        <label>Interval</label>
+                                        <label htmlFor="mobile-autosave-interval">Interval</label>
                                         <select
+                                            id="mobile-autosave-interval"
                                             className="font-select"
                                             value={autosaveInterval}
                                             onChange={(e) => onAutosaveIntervalChange(Number(e.target.value))}

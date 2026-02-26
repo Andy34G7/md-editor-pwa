@@ -203,7 +203,13 @@ function App() {
     const handleSave = async () => {
         if (!isSignedIn) return showToast('Please sign in to save', 'info');
 
+        // Check if an autosave is currently in progress to avoid race conditions
+        if (isSavingRef.current) {
+            return showToast('Save in progress, please wait...', 'info');
+        }
+
         try {
+            isSavingRef.current = true; // Set lock
             setAutosaveStatus('saving');
             if (currentFile) {
                 await saveFile(currentFile.id, markdown);
@@ -212,6 +218,8 @@ function App() {
                 showToast('Saved successfully!', 'success');
             } else {
                 // New File Flow: Select Folder -> Name -> Create
+                // Temporarily release lock for user interaction, though logic differs here as it's a new file
+                isSavingRef.current = false;
                 openFolderPicker((folder: any) => {
                     const name = prompt('Enter file name:', 'New Document.md');
                     if (!name) {
@@ -219,6 +227,7 @@ function App() {
                          return;
                     }
 
+                    // Re-acquire lock conceptually, though new file creation is distinct
                     createFile(name, markdown, folder.id).then((newFile) => {
                         refreshFiles();
                         setCurrentFile(newFile as any);
@@ -231,11 +240,18 @@ function App() {
                          setAutosaveStatus('unsaved');
                     });
                 });
+                return; // Exit here as the async flow is handled in callback
             }
         } catch (err) {
             console.error('Error saving', err);
             showToast('Failed to save', 'error');
             setAutosaveStatus('unsaved');
+        } finally {
+            // Only release lock if we didn't go into the new file flow (which releases it earlier/differently)
+            // Ideally we track if we are in the "save existing file" path.
+            if (currentFile) {
+                isSavingRef.current = false;
+            }
         }
     };
 
