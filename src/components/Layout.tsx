@@ -241,11 +241,18 @@ export const Layout: React.FC<LayoutProps> = ({
                                 className={`icon-btn ${isSettingsOpen ? 'active' : ''}`}
                                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                                 title="Settings"
+                                aria-haspopup="true"
+                                aria-expanded={isSettingsOpen}
+                                aria-controls="settings-menu"
                             >
                                 <Settings size={18} />
                             </button>
                             {isSettingsOpen && (
-                                <div className="profile-dropdown" style={{ right: 0, minWidth: '220px', padding: '10px' }}>
+                                <div
+                                    id="settings-menu"
+                                    className="profile-dropdown"
+                                    style={{ right: 0, minWidth: '220px', padding: '10px' }}
+                                >
                                     <div className="mobile-menu-section" style={{ padding: '0 5px 10px 5px', borderBottom: '1px solid var(--border-color)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                                             <label style={{ cursor: 'pointer', margin: 0, fontSize: '0.9rem' }} htmlFor="autosave-toggle">Autosave</label>
