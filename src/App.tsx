@@ -5,6 +5,7 @@ import { Editor } from './components/Editor';
 import { Preview } from './components/Preview';
 import { FilePicker } from './components/FilePicker';
 import { useGoogleDrive } from './hooks/useGoogleDrive';
+import { escapeHtml } from './utils/security';
 import { DriveFile } from './services/google';
 
 function App() {
@@ -189,12 +190,13 @@ function App() {
         if (!printWindow) return alert('Please allow popups to print');
 
         const title = currentFile ? currentFile.name.replace(/\.md$/i, '') : 'Document';
+        const escapedTitle = escapeHtml(title);
 
         printWindow.document.write(`
             <!DOCTYPE html>
             <html>
             <head>
-                <title>${title}</title>
+                <title>${escapedTitle}</title>
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css">
                 <style>
                     body {
