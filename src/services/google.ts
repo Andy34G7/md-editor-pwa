@@ -201,7 +201,12 @@ export const createPicker = (accessToken: string, onSelect: (file: any) => void)
 };
 
 export const createFolderPicker = (accessToken: string, onSelect: (folder: any) => void, onCancel?: () => void) => {
-    if (!gapiInited || !accessToken) return;
+    if (!gapiInited || !accessToken) {
+        if (onCancel) {
+            onCancel();
+        }
+        return;
+    }
 
     const google = (window as any).google;
 

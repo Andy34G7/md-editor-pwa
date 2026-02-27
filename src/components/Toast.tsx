@@ -28,7 +28,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose, d
         }, duration);
 
         return () => clearTimeout(timer);
-    }, [duration]);
+    }, [duration, message, type]);
 
     const getIcon = () => {
         switch (type) {
@@ -42,7 +42,12 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose, d
         <div className={`toast ${type}`}>
             {getIcon()}
             <span className="toast-message">{message}</span>
-            <button className="toast-close" onClick={onClose}>
+            <button
+                type="button"
+                className="toast-close"
+                onClick={onClose}
+                aria-label="Close notification"
+            >
                 <X size={16} />
             </button>
         </div>
