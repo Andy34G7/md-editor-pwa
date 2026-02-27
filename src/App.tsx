@@ -100,14 +100,6 @@ function App() {
         }, 100);
     };
 
-    /*
-    useEffect(() => {
-        if (isSignedIn && !currentFile) {
-            setShowFilePicker(true);
-        }
-    }, [isSignedIn, currentFile]);
-    */
-
     const toggleTheme = () => setIsDark(!isDark);
 
     const handleFileSelect = async (file: DriveFile) => {
