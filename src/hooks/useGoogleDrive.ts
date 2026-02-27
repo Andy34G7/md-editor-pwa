@@ -142,6 +142,11 @@ export function useGoogleDrive() {
                 createFolderPicker(accessToken, onSelect, onCancel);
             } else {
                 console.error("No access token available for folder picker");
+                try {
+                    onCancel?.();
+                } catch (callbackError) {
+                    console.error("Error in openFolderPicker onCancel callback:", callbackError);
+                }
             }
         }
     };
