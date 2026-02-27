@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Save, Moon, Sun, User, Download, Printer, ListOrdered, Columns, Menu as MenuIcon, X, FolderOpen, FilePlus, LogOut } from 'lucide-react';
+import { FileText, Save, Moon, Sun, User, Download, Printer, ListOrdered, Columns, Menu as MenuIcon, X, FolderOpen, FilePlus, LogOut, Loader, Check, CloudOff, Settings } from 'lucide-react';
 import './Layout.css';
 
 const FONTS = [
@@ -32,6 +32,11 @@ interface LayoutProps {
     onToggleLineNumbers?: () => void;
     showPreview?: boolean;
     onTogglePreview?: () => void;
+    autosaveStatus?: 'saved' | 'saving' | 'unsaved' | null;
+    autosaveEnabled?: boolean;
+    onToggleAutosave?: () => void;
+    autosaveInterval?: number;
+    onAutosaveIntervalChange?: (interval: number) => void;
 }
 
 const FONT_SIZES = [12, 14, 16, 18, 20, 24, 30];
@@ -58,6 +63,11 @@ export const Layout: React.FC<LayoutProps> = ({
     onToggleLineNumbers,
     showPreview,
     onTogglePreview,
+    autosaveStatus = null,
+    autosaveEnabled = true,
+    onToggleAutosave,
+    autosaveInterval = 30000,
+    onAutosaveIntervalChange,
 }) => {
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState(fileName);
@@ -92,6 +102,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false); // For autosave settings popup
 
     // Close menu when clicking outside (simple implementation)
     useEffect(() => {
@@ -103,10 +114,22 @@ export const Layout: React.FC<LayoutProps> = ({
             if (isProfileMenuOpen && !target.closest('.user-profile-container')) {
                 setIsProfileMenuOpen(false);
             }
+            if (isSettingsOpen && !target.closest('.settings-container')) {
+                setIsSettingsOpen(false);
+            }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isMenuOpen, isProfileMenuOpen]);
+    }, [isMenuOpen, isProfileMenuOpen, isSettingsOpen]);
+
+    const getStatusText = (status: LayoutProps['autosaveStatus']) => {
+        switch (status) {
+            case 'saving': return 'Saving changes...';
+            case 'saved': return 'All changes saved';
+            case 'unsaved': return 'Unsaved changes';
+            default: return '';
+        }
+    };
 
     return (
         <div className="app-container">
@@ -145,6 +168,43 @@ export const Layout: React.FC<LayoutProps> = ({
                             <Save size={18} />
                         </button>
                     </div>
+                    {autosaveStatus && autosaveEnabled && user && (
+                        <div
+                            className="autosave-status"
+                            style={{
+                                marginLeft: '15px',
+                                fontSize: '0.8rem',
+                                color: 'var(--text-secondary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}
+                            aria-live="polite"
+                            role="status"
+                        >
+                            <span className="visually-hidden">
+                                {getStatusText(autosaveStatus)}
+                            </span>
+                            {autosaveStatus === 'saving' && (
+                                <>
+                                    <Loader size={12} className="spin" aria-hidden="true" />
+                                    <span className="desktop-only">Saving...</span>
+                                </>
+                            )}
+                            {autosaveStatus === 'saved' && (
+                                <>
+                                    <Check size={12} aria-hidden="true" />
+                                    <span className="desktop-only">Saved</span>
+                                </>
+                            )}
+                             {autosaveStatus === 'unsaved' && (
+                                <>
+                                    <CloudOff size={12} aria-hidden="true" />
+                                    <span className="desktop-only">Unsaved</span>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Desktop Menu */}
@@ -175,6 +235,51 @@ export const Layout: React.FC<LayoutProps> = ({
                             )}
                         </div>
                     )}
+                    {onToggleAutosave && user && (
+                         <div className="settings-container" style={{ position: 'relative' }}>
+                            <button
+                                className={`icon-btn ${isSettingsOpen ? 'active' : ''}`}
+                                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                                title="Settings"
+                            >
+                                <Settings size={18} />
+                            </button>
+                            {isSettingsOpen && (
+                                <div className="profile-dropdown" style={{ right: 0, minWidth: '220px', padding: '10px' }}>
+                                    <div className="mobile-menu-section" style={{ padding: '0 5px 10px 5px', borderBottom: '1px solid var(--border-color)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <label style={{ cursor: 'pointer', margin: 0, fontSize: '0.9rem' }} htmlFor="autosave-toggle">Autosave</label>
+                                            <input
+                                                id="autosave-toggle"
+                                                type="checkbox"
+                                                checked={autosaveEnabled}
+                                                onChange={onToggleAutosave}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                        </div>
+                                        {autosaveEnabled && onAutosaveIntervalChange && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <label htmlFor="autosave-interval" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Interval</label>
+                                                <select
+                                                    id="autosave-interval"
+                                                    className="font-select"
+                                                    value={autosaveInterval}
+                                                    onChange={(e) => onAutosaveIntervalChange(Number(e.target.value))}
+                                                    style={{ width: '100%' }}
+                                                >
+                                                    <option value={10000}>10 seconds</option>
+                                                    <option value={30000}>30 seconds</option>
+                                                    <option value={60000}>1 minute</option>
+                                                    <option value={300000}>5 minutes</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {onToggleLineNumbers && (
                         <button
                             className={`icon-btn ${showLineNumbers ? 'active' : ''}`}
@@ -311,6 +416,38 @@ export const Layout: React.FC<LayoutProps> = ({
                                         <option key={s} value={s}>{s}px</option>
                                     ))}
                                 </select>
+                            </div>
+                        )}
+
+                        <div className="mobile-menu-divider" />
+
+                        {onToggleAutosave && user && (
+                             <div className="mobile-menu-section">
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <label htmlFor="mobile-autosave-toggle">Autosave</label>
+                                    <input
+                                        id="mobile-autosave-toggle"
+                                        type="checkbox"
+                                        checked={autosaveEnabled}
+                                        onChange={onToggleAutosave}
+                                    />
+                                </div>
+                                {autosaveEnabled && onAutosaveIntervalChange && (
+                                     <div style={{ marginTop: '8px' }}>
+                                        <label htmlFor="mobile-autosave-interval">Interval</label>
+                                        <select
+                                            id="mobile-autosave-interval"
+                                            className="font-select"
+                                            value={autosaveInterval}
+                                            onChange={(e) => onAutosaveIntervalChange(Number(e.target.value))}
+                                        >
+                                            <option value={10000}>10s</option>
+                                            <option value={30000}>30s</option>
+                                            <option value={60000}>1m</option>
+                                            <option value={300000}>5m</option>
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                         )}
 

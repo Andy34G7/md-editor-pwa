@@ -224,27 +224,36 @@ export const createPicker = (accessToken: string, onSelect: (file: any) => void)
     picker.setVisible(true);
 };
 
-export const createFolderPicker = (accessToken: string, onSelect: (folder: any) => void) => {
-    if (!gapiInited || !accessToken) return;
+export const createFolderPicker = (accessToken: string, onSelect: (folder: any) => void, onCancel?: () => void) => {
+    if (!gapiInited || !accessToken) {
+        if (onCancel) {
+            onCancel();
+        }
+        return;
+    }
 
     const google = (window as any).google;
+
+    const docsView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setIncludeFolders(true)
+        .setMimeTypes('application/vnd.google-apps.folder')
+        .setSelectFolderEnabled(true);
 
     const picker = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN)
         .setAppId(CLIENT_ID)
         .setOAuthToken(accessToken)
-        .addView(new google.picker.DocsView().setIncludeFolders(true).setMimeTypes('application/vnd.google-apps.folder').setSelectFolderEnabled(true))
+        .addView(docsView)
         .setDeveloperKey(API_KEY)
         .setCallback((data: any) => {
             if (data.action === google.picker.Action.PICKED) {
                 const folder = data.docs[0];
                 onSelect(folder);
+            } else if (data.action === google.picker.Action.CANCEL) {
+                if (onCancel) onCancel();
             }
         })
         .setTitle('Select a folder to save to')
         .build();
     picker.setVisible(true);
 };
-// ... existing code
-
-

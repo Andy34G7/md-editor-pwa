@@ -4,6 +4,7 @@ import { SplitPane } from './components/SplitPane';
 import { Editor } from './components/Editor';
 import { Preview } from './components/Preview';
 import { FilePicker } from './components/FilePicker';
+import { Toast, ToastType } from './components/Toast';
 import { useGoogleDrive } from './hooks/useGoogleDrive';
 import { escapeHtml } from './utils/security';
 import { DriveFile } from './services/google';
@@ -39,6 +40,44 @@ function App() {
     const [showLineNumbers, setShowLineNumbers] = useState(true);
     const [showPreview, setShowPreview] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
+    const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'unsaved' | null>(null);
+    const [autosaveEnabled, setAutosaveEnabled] = useState(true);
+    const [autosaveInterval, setAutosaveInterval] = useState(30000); // ms
+
+    // Toast State
+    const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+    const showToast = (message: string, type: ToastType = 'info') => {
+        setToast({ message, type });
+    };
+
+    const closeToast = () => {
+        setToast(null);
+    };
+
+    // Use refs to access latest state inside interval without triggering re-renders/resets
+    const markdownRef = useRef(markdown);
+    const isDirtyRef = useRef(isDirty);
+    const currentFileRef = useRef(currentFile);
+    const autosaveEnabledRef = useRef(autosaveEnabled);
+    const isSavingRef = useRef(false); // Flag to track saving status
+
+    useEffect(() => {
+        markdownRef.current = markdown;
+    }, [markdown]);
+
+    useEffect(() => {
+        isDirtyRef.current = isDirty;
+    }, [isDirty]);
+
+    useEffect(() => {
+        currentFileRef.current = currentFile;
+    }, [currentFile]);
+
+    useEffect(() => {
+        autosaveEnabledRef.current = autosaveEnabled;
+    }, [autosaveEnabled]);
+
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -59,6 +98,50 @@ function App() {
         document.documentElement.style.setProperty('--preview-font', font);
         document.documentElement.style.setProperty('--preview-font-size', `${fontSize}px`);
     }, [font, fontSize]);
+
+    // Autosave Logic (Fixed Interval)
+    useEffect(() => {
+        let interval: any;
+
+        if (isSignedIn && autosaveEnabled) {
+            interval = setInterval(async () => {
+                // Check conditions using refs to avoid resetting timer
+                if (currentFileRef.current && isDirtyRef.current && autosaveEnabledRef.current) {
+                    if (isSavingRef.current) {
+                        return; // Skip if already saving
+                    }
+
+                    isSavingRef.current = true;
+                    // Snapshot content to compare after save
+                    const contentToSave = markdownRef.current;
+                    try {
+                        setAutosaveStatus('saving');
+                        await saveFile(currentFileRef.current.id, contentToSave);
+
+                        // Check if content has changed during save
+                        if (markdownRef.current === contentToSave) {
+                            setIsDirty(false);
+                            setAutosaveStatus('saved');
+                        } else {
+                            // Leave as dirty/unsaved if content changed
+                            setAutosaveStatus('unsaved');
+                        }
+                    } catch (err) {
+                        console.error('Autosave failed', err);
+                        setAutosaveStatus('unsaved');
+                        showToast('Autosave failed. Please check your connection.', 'error');
+                    } finally {
+                        isSavingRef.current = false;
+                    }
+                }
+            }, autosaveInterval);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isSignedIn, saveFile, autosaveInterval, autosaveEnabled]); // Re-run if interval or enabled state changes
+
 
     // Sync Scrolling Logic
     const handleEditorScroll = (scrollTop: number, scrollHeight: number, clientHeight: number) => {
@@ -111,44 +194,104 @@ function App() {
             setMarkdown(content as string);
             setCurrentFile(file);
             setIsDirty(false);
+            setAutosaveStatus('saved');
         } catch (err) {
             console.error('Error loading file', err);
-            alert('Failed to load file');
+            showToast('Failed to load file', 'error');
             setShowFilePicker(true);
         }
     };
 
     const handleSave = async () => {
-        if (!isSignedIn) return alert('Please sign in to save');
+        if (!isSignedIn) return showToast('Please sign in to save', 'info');
+
+        // Check if an autosave is currently in progress to avoid race conditions
+        if (isSavingRef.current) {
+            return showToast('Save in progress, please wait...', 'info');
+        }
 
         try {
+            isSavingRef.current = true; // Set lock
+            setAutosaveStatus('saving');
             if (currentFile) {
-                await saveFile(currentFile.id, markdown);
-                setIsDirty(false);
-                alert('Saved successfully!');
+                // Snapshot content
+                const contentToSave = markdownRef.current;
+                await saveFile(currentFile.id, contentToSave);
+
+                // Check if content has changed during save
+                if (markdownRef.current === contentToSave) {
+                    setIsDirty(false);
+                    setAutosaveStatus('saved');
+                    showToast('Saved successfully!', 'success');
+                } else {
+                    setAutosaveStatus('unsaved');
+                    // Maybe show a specific toast saying "Saved (but newer changes exist)"?
+                    // For now, "Saved successfully!" for the *explicit* save action is probably OK,
+                    // but the status indicator should correctly reflect 'unsaved'.
+                    // Actually, standard manual save usually implies "I saved what was there at start".
+                    // If user typed more, it IS dirty.
+                }
+
+                isSavingRef.current = false; // Release lock immediately for existing file save
             } else {
                 // New File Flow: Select Folder -> Name -> Create
-                openFolderPicker((folder: any) => {
-                    const name = prompt('Enter file name:', 'New Document.md');
-                    if (!name) return;
+                // IMPORTANT: Do NOT release lock here. Wait until the flow is complete or cancelled.
+                openFolderPicker(
+                    // Success Callback
+                    (folder: any) => {
+                        const name = prompt('Enter file name:', 'New Document.md');
+                        if (!name) {
+                             setAutosaveStatus(null); // Reset status if cancelled
+                             isSavingRef.current = false; // Release lock on cancel
+                             return;
+                        }
 
-                    createFile(name, markdown, folder.id).then((newFile) => {
-                        refreshFiles();
-                        setCurrentFile(newFile as any);
-                        setIsDirty(false);
-                        alert('Saved successfully!');
-                    }).catch(err => {
-                        console.error('Error creating file', err);
-                        alert('Failed to create file');
-                    });
-                });
+                        // We can't easily check for content changes during the prompt/picker flow as easily
+                        // because creating a file implies taking the *current* state at creation time.
+                        // But strictly speaking, if they type while the prompt is open (unlikely/impossible due to modal), it's fine.
+                        // However, `createFile` will use `markdown` (state) or `markdownRef.current`?
+                        // The original code used `markdown` state variable which might be stale in closure?
+                        // No, `createFile` logic below uses `markdown` from closure.
+                        // To be safe, we should use `markdownRef.current`.
+
+                        createFile(name, markdownRef.current, folder.id).then((newFile) => {
+                            refreshFiles();
+                            setCurrentFile(newFile as any);
+                            setIsDirty(false);
+                            setAutosaveStatus('saved');
+                            showToast('Saved successfully!', 'success');
+                        }).catch(err => {
+                            console.error('Error creating file', err);
+                            showToast('Failed to create file', 'error');
+                             setAutosaveStatus('unsaved');
+                        }).finally(() => {
+                            isSavingRef.current = false; // Release lock on completion
+                        });
+                    },
+                    // Cancel Callback
+                    () => {
+                        isSavingRef.current = false; // Release lock on picker cancel
+                        setAutosaveStatus(null);
+                    }
+                );
+                // NOTE: We do NOT release lock in a finally block here because the async flow continues in callbacks
             }
         } catch (err) {
             console.error('Error saving', err);
-            alert('Failed to save');
+            showToast('Failed to save', 'error');
+            setAutosaveStatus('unsaved');
+            isSavingRef.current = false; // Release lock on error
         }
     };
 
+    // Update status when dirtied manually
+    const handleContentChange = (val: string) => {
+        setMarkdown(val);
+        setIsDirty(true);
+        if (currentFile) {
+            setAutosaveStatus('unsaved');
+        }
+    };
 
 
     const handleLogout = () => {
@@ -156,6 +299,7 @@ function App() {
         logout();
         setCurrentFile(null);
         setMarkdown('# Welcome to MD Editor\n\nSign in with Google to edit your markdown files.');
+        setAutosaveStatus(null);
     };
 
     const handleRename = async (newName: string) => {
@@ -166,7 +310,7 @@ function App() {
             refreshFiles(); // Refresh list to show new name
         } catch (err) {
             console.error('Failed to rename', err);
-            alert('Failed to rename file');
+            showToast('Failed to rename file', 'error');
         }
     };
 
@@ -184,10 +328,10 @@ function App() {
 
     const handlePrint = () => {
         const content = previewRef.current?.innerHTML || '';
-        if (!content) return alert('Nothing to print');
+        if (!content) return showToast('Nothing to print', 'info');
 
         const printWindow = window.open('', '_blank');
-        if (!printWindow) return alert('Please allow popups to print');
+        if (!printWindow) return showToast('Please allow popups to print', 'error');
 
         const title = currentFile ? currentFile.name.replace(/\.md$/i, '') : 'Document';
         const escapedTitle = escapeHtml(title);
@@ -247,6 +391,7 @@ function App() {
         setCurrentFile(null);
         setMarkdown('');
         setIsDirty(false);
+        setAutosaveStatus(null);
     };
 
     const handleOpen = () => {
@@ -280,6 +425,11 @@ function App() {
                 onToggleLineNumbers={() => setShowLineNumbers(!showLineNumbers)}
                 showPreview={showPreview}
                 onTogglePreview={() => setShowPreview(!showPreview)}
+                autosaveStatus={autosaveStatus}
+                autosaveEnabled={autosaveEnabled}
+                onToggleAutosave={() => setAutosaveEnabled(!autosaveEnabled)}
+                autosaveInterval={autosaveInterval}
+                onAutosaveIntervalChange={setAutosaveInterval}
             >
                 {
                     isMobile ? (
@@ -292,10 +442,7 @@ function App() {
                         ) : (
                             <Editor
                                 value={markdown}
-                                onChange={(val) => {
-                                    setMarkdown(val);
-                                    setIsDirty(true);
-                                }}
+                                onChange={handleContentChange}
                                 fontSize={fontSize}
                                 fontFamily={font}
                                 hideLineNumbers={!showLineNumbers}
@@ -310,10 +457,7 @@ function App() {
                                 left={
                                     <Editor
                                         value={markdown}
-                                        onChange={(val) => {
-                                            setMarkdown(val);
-                                            setIsDirty(true);
-                                        }}
+                                        onChange={handleContentChange}
                                         fontSize={fontSize}
                                         fontFamily={font}
                                         hideLineNumbers={!showLineNumbers}
@@ -333,10 +477,7 @@ function App() {
                         ) : (
                             <Editor
                                 value={markdown}
-                                onChange={(val) => {
-                                    setMarkdown(val);
-                                    setIsDirty(true);
-                                }}
+                                onChange={handleContentChange}
                                 fontSize={fontSize}
                                 fontFamily={font}
                                 hideLineNumbers={!showLineNumbers}
@@ -364,6 +505,16 @@ function App() {
                         setMarkdown('');
                     }}
                 />
+            )}
+
+            {toast && (
+                <div className="toast-container">
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={closeToast}
+                    />
+                </div>
             )}
         </>
     );
