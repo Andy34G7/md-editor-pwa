@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, FileText, Folder, ArrowLeft, Plus } from 'lucide-react';
 import { DriveFile } from '../services/google';
 import './FilePicker.css';
@@ -34,13 +34,15 @@ export const FilePicker: React.FC<FilePickerProps> = ({
         }
     };
 
-    const sortedFiles = [...files].sort((a, b) => {
-        const aIsFolder = a.mimeType === 'application/vnd.google-apps.folder';
-        const bIsFolder = b.mimeType === 'application/vnd.google-apps.folder';
-        if (aIsFolder && !bIsFolder) return -1;
-        if (!aIsFolder && bIsFolder) return 1;
-        return a.name.localeCompare(b.name);
-    });
+    const sortedFiles = useMemo(() => {
+        return [...files].sort((a, b) => {
+            const aIsFolder = a.mimeType === 'application/vnd.google-apps.folder';
+            const bIsFolder = b.mimeType === 'application/vnd.google-apps.folder';
+            if (aIsFolder && !bIsFolder) return -1;
+            if (!aIsFolder && bIsFolder) return 1;
+            return a.name.localeCompare(b.name);
+        });
+    }, [files]);
 
     return (
         <div className="file-picker-overlay">
