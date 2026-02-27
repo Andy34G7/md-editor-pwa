@@ -39,10 +39,19 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose, d
     };
 
     return (
-        <div className={`toast ${type}`}>
+        <div
+            className={`toast ${type}`}
+            role={type === 'error' ? 'alert' : 'status'}
+            aria-live={type === 'error' ? 'assertive' : 'polite'}
+        >
             {getIcon()}
             <span className="toast-message">{message}</span>
-            <button className="toast-close" onClick={onClose}>
+            <button
+                className="toast-close"
+                type="button"
+                onClick={onClose}
+                aria-label="Dismiss notification"
+            >
                 <X size={16} />
             </button>
         </div>
