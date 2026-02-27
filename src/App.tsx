@@ -111,11 +111,20 @@ function App() {
                     }
 
                     isSavingRef.current = true;
+                    // Snapshot content to compare after save
+                    const contentToSave = markdownRef.current;
                     try {
                         setAutosaveStatus('saving');
-                        await saveFile(currentFileRef.current.id, markdownRef.current);
-                        setIsDirty(false); // This triggers re-render, but interval is stable on [isSignedIn, saveFile, autosaveInterval, autosaveEnabled]
-                        setAutosaveStatus('saved');
+                        await saveFile(currentFileRef.current.id, contentToSave);
+
+                        // Check if content has changed during save
+                        if (markdownRef.current === contentToSave) {
+                            setIsDirty(false);
+                            setAutosaveStatus('saved');
+                        } else {
+                            // Leave as dirty/unsaved if content changed
+                            setAutosaveStatus('unsaved');
+                        }
                     } catch (err) {
                         console.error('Autosave failed', err);
                         setAutosaveStatus('unsaved');
@@ -212,10 +221,24 @@ function App() {
             isSavingRef.current = true; // Set lock
             setAutosaveStatus('saving');
             if (currentFile) {
-                await saveFile(currentFile.id, markdown);
-                setIsDirty(false);
-                setAutosaveStatus('saved');
-                showToast('Saved successfully!', 'success');
+                // Snapshot content
+                const contentToSave = markdownRef.current;
+                await saveFile(currentFile.id, contentToSave);
+
+                // Check if content has changed during save
+                if (markdownRef.current === contentToSave) {
+                    setIsDirty(false);
+                    setAutosaveStatus('saved');
+                    showToast('Saved successfully!', 'success');
+                } else {
+                    setAutosaveStatus('unsaved');
+                    // Maybe show a specific toast saying "Saved (but newer changes exist)"?
+                    // For now, "Saved successfully!" for the *explicit* save action is probably OK,
+                    // but the status indicator should correctly reflect 'unsaved'.
+                    // Actually, standard manual save usually implies "I saved what was there at start".
+                    // If user typed more, it IS dirty.
+                }
+
                 isSavingRef.current = false; // Release lock immediately for existing file save
             } else {
                 // New File Flow: Select Folder -> Name -> Create
@@ -230,7 +253,15 @@ function App() {
                              return;
                         }
 
-                        createFile(name, markdown, folder.id).then((newFile) => {
+                        // We can't easily check for content changes during the prompt/picker flow as easily
+                        // because creating a file implies taking the *current* state at creation time.
+                        // But strictly speaking, if they type while the prompt is open (unlikely/impossible due to modal), it's fine.
+                        // However, `createFile` will use `markdown` (state) or `markdownRef.current`?
+                        // The original code used `markdown` state variable which might be stale in closure?
+                        // No, `createFile` logic below uses `markdown` from closure.
+                        // To be safe, we should use `markdownRef.current`.
+
+                        createFile(name, markdownRef.current, folder.id).then((newFile) => {
                             refreshFiles();
                             setCurrentFile(newFile as any);
                             setIsDirty(false);

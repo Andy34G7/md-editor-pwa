@@ -122,7 +122,7 @@ export const Layout: React.FC<LayoutProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isMenuOpen, isProfileMenuOpen, isSettingsOpen]);
 
-    const getStatusText = (status: string | null) => {
+    const getStatusText = (status: LayoutProps['autosaveStatus']) => {
         switch (status) {
             case 'saving': return 'Saving changes...';
             case 'saved': return 'All changes saved';
