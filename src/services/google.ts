@@ -112,13 +112,25 @@ export const getFileContent = async (fileId: string) => {
 
 export const saveFile = async (fileId: string, content: string) => {
     try {
-        const response = await gapi.client.request({
-            path: `/upload/drive/v3/files/${fileId}`,
+        const token = gapi.client.getToken();
+        if (!token || !token.access_token) {
+            throw new Error('No access token available');
+        }
+
+        const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
             method: 'PATCH',
-            params: { uploadType: 'media' },
+            headers: {
+                'Authorization': `Bearer ${token.access_token}`,
+                'Content-Type': 'text/plain'
+            },
             body: content,
         });
-        return response;
+
+        if (!response.ok) {
+            throw new Error(`Failed to save file: ${response.status} ${response.statusText}`);
+        }
+
+        return await response.json();
     } catch (err) {
         console.error('Error saving file', err);
         throw err;
