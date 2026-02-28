@@ -121,23 +121,13 @@ export const saveFile = async (fileId: string, content: string) => {
             method: 'PATCH',
             headers: {
                 'Authorization': `Bearer ${token.access_token}`,
-                'Content-Type': 'text/markdown; charset=utf-8'
+                'Content-Type': 'text/plain'
             },
             body: content,
         });
 
         if (!response.ok) {
-            let errorDetails = '';
-            try {
-                const text = await response.text();
-                if (text) {
-                    const truncated = text.length > 1000 ? text.substring(0, 1000) + '...[truncated]' : text;
-                    errorDetails = ` - Response body: ${truncated}`;
-                }
-            } catch {
-                // Ignore errors while reading the response body and fall back to status-only message.
-            }
-            throw new Error(`Failed to save file: ${response.status} ${response.statusText}${errorDetails}`);
+            throw new Error(`Failed to save file: ${response.status} ${response.statusText}`);
         }
 
         return await response.json();
