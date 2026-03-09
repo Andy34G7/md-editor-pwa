@@ -13,7 +13,8 @@ import {
     getUserProfile,
     createPicker,
     createFolderPicker,
-    DriveFile  // Import Shared Type
+    DriveFile,  // Import Shared Type
+    autoSignIn
 } from '../services/google';
 
 // Remove local DriveFile interface definition
@@ -38,12 +39,19 @@ export function useGoogleDrive() {
             await new Promise<void>((resolve) => gapi.load('client:picker', resolve));
             await initializeGapiClient();
             gapiLoaded = true;
-            if (gisLoaded) setIsInitialized(true);
+            if (gisLoaded) {
+                setIsInitialized(true);
+                autoSignIn();
+            }
         };
 
         const onGisLoad = () => {
             initializeGisClient(async (tokenResponse) => {
-                if (tokenResponse && tokenResponse.access_token) {
+                if (tokenResponse && tokenResponse.error) {
+                    console.log('Silent sign-in failed or user needs to click login:', tokenResponse.error);
+                    // Do not set isSignedIn strictly here if it fails
+                    // just fail gracefully. The user can click login.
+                } else if (tokenResponse && tokenResponse.access_token) {
                     setAccessToken(tokenResponse.access_token);
                     setIsSignedIn(true);
 
@@ -59,7 +67,10 @@ export function useGoogleDrive() {
                 }
             });
             gisLoaded = true;
-            if (gapiLoaded) setIsInitialized(true);
+            if (gapiLoaded) {
+                setIsInitialized(true);
+                autoSignIn();
+            }
         };
 
         loadGoogleScripts(onGapiLoad, onGisLoad);

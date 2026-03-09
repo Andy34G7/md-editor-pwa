@@ -59,6 +59,12 @@ export const handleAuthClick = () => {
     }
 };
 
+export const autoSignIn = () => {
+    if (tokenClient) {
+        tokenClient.requestAccessToken({ prompt: 'none' });
+    }
+};
+
 export const handleSignOut = () => {
     const token = gapi.client.getToken();
     if (token !== null) {

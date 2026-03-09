@@ -62,6 +62,23 @@ To run this project, you need a Google Cloud Project with the Drive API enabled.
 -   **Auth & Storage**: Google Identity Services SDK + Google Drive REST API
 -   **PWA**: vite-plugin-pwa
 
+## Deployment
+
+### Vercel (Recommended)
+
+The easiest way to deploy is to use Vercel.
+
+1.  **Push your code to GitHub/GitLab/Bitbucket**.
+2.  **Import project into Vercel**:
+    -   Go to [Vercel Dashboard](https://vercel.com/dashboard) -> Add New -> Project.
+    -   Import your repository.
+3.  **Configure Project**:
+    -   **Framework Preset**: Vite (should be auto-detected).
+    -   **Root Directory**: `./` (default).
+    -   **Environment Variables**:
+        -   Add `VITE_GOOGLE_CLIENT_ID` with your Google Client ID.
+4.  **Deploy**!
+
 ## License
 
 MIT
